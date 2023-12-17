@@ -103,7 +103,7 @@ MonoBehaviour:
   layerMask:
     serializedVersion: 2
     m_Bits: 64
-  deathGoomba: {fileID: 694570571, guid: bfa7b43af1f31ef478b9b9daa398b150, type: 3}
+  goombaDeath: {fileID: 8520551165496161949}
 --- !u!61 &9201126016310112747
 BoxCollider2D:
   m_ObjectHideFlags: 0

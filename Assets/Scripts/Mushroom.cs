@@ -9,4 +9,5 @@ public class Mushroom : Contactable
         Player.Instance.SetState(Player.State.Big);
         Destroy(gameObject);
     }
+
 }

@@ -6,7 +6,8 @@ using UnityEngine;
 public class Player : MonoBehaviour
 {
     [SerializeField] private float moveSpeed;
-    [SerializeField] private float jumpSpeed;
+    [SerializeField] private float jumpForce;
+    [SerializeField] float jumpTimeLimit = 1.0f;
     [SerializeField] private LayerMask layerMask;
 
     public event EventHandler<OnStateChangedEventArgs> OnStateChanged;
@@ -23,13 +24,15 @@ public class Player : MonoBehaviour
     }
 
     private State state;
-    private Rigidbody2D rb;
     private BoxCollider2D boxCollider;
     private RaycastHit2D hit;
 
     Vector2 inputVector;
     private bool isWalking;
     private bool isJumping;
+    private float jumpStartTimer;
+    private float groundStartTimer;
+    private float groundStartTimerMax = 0.1f;
     public static Player Instance { get; private set; }
 
     private void Awake()
@@ -40,26 +43,25 @@ public class Player : MonoBehaviour
         }
         state = State.Normal;
         boxCollider = GetComponent<BoxCollider2D>();
-        rb = GetComponent<Rigidbody2D>();
     }
 
     private void Update()
     {
         HandleMovement();
     }
-    private void FixedUpdate()
-    {
-        if (rb != null)
-        {
-            float jumpDistance = jumpSpeed;
-            if (isJumping)
-            {
-                jumpDistance = 0f;
-            }
+    //private void FixedUpdate()
+    //{
+    //    if (rb != null)
+    //    {
+    //        float jumpDistance = jumpSpeed;
+    //        if (isJumping)
+    //        {
+    //            jumpDistance = 0f;
+    //        }
 
-            rb.AddForce(new Vector2(0, inputVector.y * jumpDistance));
-        }
-    }
+    //        rb.AddForce(new Vector2(0, inputVector.y * jumpDistance));
+    //    }
+    //}
 
     private void HandleMovement()
     {
@@ -68,47 +70,65 @@ public class Player : MonoBehaviour
             inputVector = GameInput.Instance.GetMovement();
 
             float moveDistance = moveSpeed * Time.deltaTime;
+            float rayCastY = boxCollider.size.y / 2.0f + 0.02f;
 
-            bool isGrounded = Physics2D.Raycast(transform.position, Vector2.down, boxCollider.size.y, layerMask);
+            bool isGrounded = Physics2D.Raycast(transform.position, Vector2.down, rayCastY, layerMask);
 
             //hit = Physics2D.BoxCast(transform.position, boxCollider.size, 0, Vector2.down, boxCollider.size.y / 2.0f - 2.0f * Time.fixedDeltaTime, layerMask);
             if (isGrounded)
             {
-                isJumping = false;
+                groundStartTimer -= Time.deltaTime;
+                if (groundStartTimer <= 0 && inputVector.y != 0)
+                {
+                    isJumping = true;
+                    jumpStartTimer = Time.time;
+                }
+            }
+            if(!isGrounded)
+            {
+                groundStartTimer = groundStartTimerMax;
+                bool cantJump = Physics2D.Raycast(transform.position, Vector2.up, rayCastY, layerMask);
+                if (inputVector.y == 0 || cantJump)
+                {
+                    isJumping = false;
+                }
+            }
+            ApplyJump();
+            if (inputVector.x > 0)
+            {
+                transform.localScale = Vector3.one;
+                isWalking = true;
+            }
+            else if (inputVector.x < 0)
+            {
+                transform.localScale = new Vector3(-1, 1, 1);
+                isWalking = true;
             }
             else
             {
-                isJumping = true;
-            }
-            hit = Physics2D.BoxCast(transform.position, boxCollider.size, 0, new Vector2(inputVector.x, 0), moveDistance, layerMask);
-            if (hit.collider == null)
-            {
-                if (inputVector.x > 0)
-                {
-                    transform.localScale = Vector3.one;
-                    isWalking = true;
-                }
-                else if (inputVector.x < 0)
-                {
-                    transform.localScale = new Vector3(-1, 1, 1);
-                    isWalking = true;
-                }
-                else
-                {
-                    isWalking = false;
-                }
-
-            }
-            else
-            {
-                Debug.Log(hit.collider.gameObject.transform.position);
                 isWalking = false;
             }
             transform.position += new Vector3(moveDistance * inputVector.x, 0, 0);
-            Debug.Log(state);
         }
     }
 
+    void ApplyJump()
+    {
+        if (isJumping)
+        {
+            float elapsedTime = Time.time - jumpStartTimer;
+            if(elapsedTime < jumpTimeLimit)
+            {
+                float jumpFactor = 1.0f - (elapsedTime / jumpTimeLimit);
+                float yVelocity = jumpForce * jumpFactor;
+                transform.Translate(Vector2.up * yVelocity * Time.deltaTime);
+            }
+            else
+            {
+                isJumping = false;
+            }
+        }
+    }
     private void OnCollisionEnter2D(Collision2D collision)
     {
         Vector2 contactNormal = collision.contacts[0].normal;

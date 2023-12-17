@@ -20,8 +20,14 @@ public class BreakableBlock : MonoBehaviour
 
             if (contactNormal == Vector2.up)
             {
-                Debug.Log(contactNormal);
-                GetComponent<Animator>().SetTrigger(BREAKABLE);
+                if (Player.Instance.GetState() == Player.State.Normal)
+                {
+                    GetComponent<Animator>().SetTrigger(BREAKABLE);
+                }
+                else
+                {
+                    Destroy(gameObject);
+                }
             }
         }
     }
